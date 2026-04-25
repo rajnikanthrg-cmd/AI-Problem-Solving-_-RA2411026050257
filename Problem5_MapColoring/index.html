@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSP Map Coloring Solver</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Base and Typography */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #060612;
+            color: #e2e8f0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+            /* Animated Grid Background */
+            background-image: 
+                linear-gradient(rgba(124, 58, 237, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(124, 58, 237, 0.07) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: moveGrid 15s linear infinite;
+        }
+        @keyframes moveGrid {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .controls-panel-wrapper {
+            width: 400px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .controls-panel {
+            background: #0e0e20;
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        /* Scrollbar */
+        .controls-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        .controls-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .controls-panel::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.3);
+            border-radius: 10px;
+        }
+
+        .canvas-panel {
+            flex-grow: 1;
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            background-color: #08081a;
+            background-image: radial-gradient(circle, #1a1a35 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+            animation: moveDotGrid 20s linear infinite;
+            border: 2px solid #4f46e5;
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.3), inset 0 0 20px rgba(79, 70, 229, 0.2);
+        }
+        @keyframes moveDotGrid {
+            0% { background-position: 0 0; }
+            100% { background-position: 30px 30px; }
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Typography specifics */
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffffff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #818cf8;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        h3::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 14px;
+            background: #818cf8;
+            margin-right: 8px;
+            border-radius: 2px;
+            box-shadow: 0 0 8px #818cf8;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Inputs and Selects */
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+        input[type="text"], select {
+            flex: 1;
+            background: #1a1a2e;
+            border: 1px solid #4f46e5;
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus, select:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 10px rgba(129, 140, 248, 0.3);
+        }
+        label {
+            width: 60px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        /* Buttons */
+        button {
+            font-family: 'Space Grotesk', sans-serif;
+            color: #ffffff;
+            background: #7c3aed;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 13px;
+        }
+        button:hover {
+            transform: scale(1.05);
+            background: #6d28d9;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        .actions button {
+            flex: 1;
+            padding: 14px;
+            font-size: 14px;
+        }
+
+        /* Charging animation for Solve button */
+        .btn-primary {
+            background: linear-gradient(45deg, #7c3aed, #06b6d4);
+            background-size: 200% auto;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary:hover {
+            background-position: right center;
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+        }
+        .btn-primary.charging::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: chargeSweep 0.5s linear infinite;
+        }
+        @keyframes chargeSweep {
+            100% { left: 100%; }
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #334155;
+            color: #ffffff;
+        }
+        .btn-secondary:hover {
+            border-color: #64748b;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        /* Range input */
+        input[type="range"] {
+            flex: 1;
+            accent-color: #818cf8;
+            cursor: pointer;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .stat-box {
+            background: #0e0e20;
+            border: 1px solid #4f46e5;
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+        .stat-box:hover {
+            box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
+        }
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 2px; height: 100%;
+            background: #818cf8;
+            box-shadow: 0 0 8px #818cf8;
+        }
+        .stat-icon {
+            font-size: 16px;
+            margin-bottom: 4px;
+            color: #818cf8;
+        }
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* Output Panel */
+        .output-panel {
+            background: #0e0e20;
+            border: 1px solid #4f46e5;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 10px;
+            overflow: visible;
+        }
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            /* Slide in animation */
+            animation: slideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .result-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(14, 14, 32, 0.9);
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            border: 1px solid #4f46e5;
+            backdrop-filter: blur(10px);
+        }
+        .status-overlay.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .success-text { 
+            color: #00ff88; 
+            border-color: rgba(0, 255, 136, 0.3);
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.1);
+        }
+        .error-text { 
+            color: #ff3366; 
+            border-color: rgba(255, 51, 102, 0.3);
+            text-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+            box-shadow: 0 0 30px rgba(255, 51, 102, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                padding: 10px;
+            }
+            .controls-panel-wrapper {
+                width: 100%;
+                max-height: 50vh;
+            }
+            .canvas-panel {
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls-panel-wrapper">
+            <div class="controls-panel">
+                <h1>Map Coloring Solver</h1>
+                
+                <div class="section">
+                    <h3>Add Region</h3>
+                    <div class="input-group">
+                        <input type="text" id="regionName" placeholder="Region name (e.g. E)" onkeydown="if(event.key === 'Enter') addRegion()">
+                        <button onclick="addRegion()">Add</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h3>Add Adjacency</h3>
+                    <div class="input-group">
+                        <select id="adjFrom"></select>
+                        <select id="adjTo"></select>
+                        <button onclick="addAdjacency()">Add</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h3>Settings</h3>
+                    <div class="input-group">
+                        <label>Colors:</label>
+                        <select id="numColors" onchange="resetGraph()">
+                            <option value="3" selected>3 (RGB)</option>
+                            <option value="4">4 (RGBY)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Speed:</label>
+                        <input type="range" id="animSpeed" min="50" max="1000" value="700">
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <button onclick="startSolving()" class="btn-primary" id="solveBtn">Solve</button>
+                    <button onclick="resetGraph()" class="btn-secondary">Reset</button>
+                    <button onclick="clearAll()" class="btn-danger">Clear</button>
+                </div>
+                
+                <div class="stats-panel">
+                    <div class="stat-box">
+                        <div class="stat-icon">&#x229B;</div>
+                        <div class="stat-value" id="stat-explored">0</div>
+                        <div class="stat-label">Nodes Explored</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">&#x21BA;</div>
+                        <div class="stat-value" id="stat-backtracks">0</div>
+                        <div class="stat-label">Backtracks</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">&#x23F1;</div>
+                        <div class="stat-value" id="stat-time">0.00ms</div>
+                        <div class="stat-label">Time Taken</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">&#x25D3;</div>
+                        <div class="stat-value" id="stat-colors">0</div>
+                        <div class="stat-label">Colors Used</div>
+                    </div>
+                </div>
+                
+                <div class="output-panel">
+                    <h3>Result Output</h3>
+                    <div id="output-content" style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #94a3b8;">Awaiting connection...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="canvas-panel">
+            <canvas id="graphCanvas"></canvas>
+            <div class="status-overlay" id="statusOverlay"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let nodes = [
+            { id: 'A', x: 0, y: 0, color: null, flash: 0 },
+            { id: 'B', x: 0, y: 0, color: null, flash: 0 },
+            { id: 'C', x: 0, y: 0, color: null, flash: 0 },
+            { id: 'D', x: 0, y: 0, color: null, flash: 0 }
+        ];
+
+        let edges = [
+            { from: 'A', to: 'B' },
+            { from: 'A', to: 'C' },
+            { from: 'B', to: 'C' },
+            { from: 'B', to: 'D' },
+            { from: 'C', to: 'D' }
+        ];
+
+        const colorPalette = {
+            'Red': '#ff3366',
+            'Green': '#00ff88',
+            'Blue': '#3b82f6',
+            'Yellow': '#ffd700',
+            'Empty': '#0d0d1a'
+        };
+
+        let draggingNode = null;
+        let isAnimating = false;
+        let abortAnimation = false;
+
+        let stats = { explored: 0, backtracks: 0, startTime: 0, endTime: 0 };
+        let steps = [];
+
+        // Canvas animation state variables
+        let time = 0;
+        let ripples = [];
+        let winningSync = 0;
+
+        function init() {
+            window.addEventListener('resize', resizeCanvas);
+            updateSelects();
+            setupMouseEvents();
+            
+            // Allow layout to compute before initial canvas sizing
+            setTimeout(() => {
+                resizeCanvas();
+                requestAnimationFrame(renderLoop);
+            }, 50);
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            centerGraph();
+        }
+
+        function centerGraph() {
+            const width = canvas.width;
+            const height = canvas.height;
+            if(width === 0 || height === 0 || nodes.length === 0) return;
+            
+            let cx = width / 2;
+            let cy = height / 2;
+            let radius = Math.min(width, height) * 0.35; // Fill canvas proportionally
+            
+            if (nodes.length === 1) {
+                nodes[0].x = cx;
+                nodes[0].y = cy;
+                return;
+            }
+
+            let angleStep = (2 * Math.PI) / nodes.length;
+            nodes.forEach((n, i) => {
+                n.x = cx + Math.cos(i * angleStep - Math.PI/2) * radius;
+                n.y = cy + Math.sin(i * angleStep - Math.PI/2) * radius;
+            });
+        }
+
+        function setupMouseEvents() {
+            canvas.addEventListener('mousedown', e => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                draggingNode = nodes.find(n => {
+                    let dx = n.x - x;
+                    let dy = n.y - y;
+                    return dx*dx + dy*dy < 25*25;
+                });
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                if (draggingNode) {
+                    const rect = canvas.getBoundingClientRect();
+                    draggingNode.x = e.clientX - rect.left;
+                    draggingNode.y = e.clientY - rect.top;
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => { draggingNode = null; });
+            canvas.addEventListener('mouseleave', () => { draggingNode = null; });
+        }
+
+        function renderLoop() {
+            drawGraph();
+            requestAnimationFrame(renderLoop);
+        }
+
+        function addRipple(x, y, color) {
+            ripples.push({ x, y, radius: 25, color, alpha: 1.0 });
+        }
+
+        function drawGraph() {
+            time += 0.05;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw circuit traces (edges)
+            edges.forEach(edge => {
+                let n1 = nodes.find(n => n.id === edge.from);
+                let n2 = nodes.find(n => n.id === edge.to);
+                if (n1 && n2) {
+                    ctx.beginPath();
+                    ctx.moveTo(n1.x, n1.y);
+                    ctx.lineTo(n2.x, n2.y);
+                    
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#4f46e5';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowColor = '#4f46e5';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+            });
+            
+            // Draw Ripples
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                let r = ripples[i];
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.radius, 0, 2*Math.PI);
+                ctx.strokeStyle = r.color;
+                ctx.globalAlpha = r.alpha;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+                
+                r.radius += 2.5;
+                r.alpha -= 0.03;
+                if (r.alpha <= 0) {
+                    ripples.splice(i, 1);
+                }
+            }
+            
+            // Draw nodes
+            nodes.forEach(node => {
+                let isColored = !!node.color;
+                
+                let baseColor = isColored ? colorPalette[node.color] : '#0d0d1a';
+                let strokeColor = isColored ? colorPalette[node.color] : '#00f5ff';
+                let glowColor = isColored ? colorPalette[node.color] : '#00f5ff';
+                
+                let radius = 28;
+                let glowSize = 0;
+                
+                // Idle pulse for uncolored nodes
+                if (!isColored) {
+                    radius = 28 + 1.5 * Math.sin(time * 3);
+                    glowSize = 10 + 4 * Math.sin(time * 3);
+                } else {
+                    glowSize = 20; // strong canvas shadowBlur matching node color
+                }
+                
+                // Outer Pulse (processing or winning)
+                let pulseOuter = 0;
+                if (winningSync > 0) {
+                    pulseOuter = 15 * Math.sin(winningSync);
+                } else if (node.flash > 0) {
+                    pulseOuter = 6 + 4 * Math.sin(time * 8);
+                }
+
+                if (pulseOuter > 0) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius + 8 + pulseOuter, 0, 2*Math.PI);
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.5;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
+                
+                // Base orb
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = baseColor;
+                
+                // Orb Glow
+                ctx.shadowBlur = node.flash > 0 ? 30 : glowSize;
+                ctx.shadowColor = glowColor;
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+                
+                // Orb border
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = strokeColor;
+                if (!isColored) {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#00f5ff';
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                // Text label
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '900 18px "Space Grotesk"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = 'rgba(0,0,0,1)';
+                ctx.fillText(node.id, node.x, node.y);
+                ctx.shadowBlur = 0;
+            });
+
+            if (winningSync > 0) {
+                winningSync += 0.1;
+                if (winningSync > Math.PI) winningSync = 0; // complete one pulse
+            }
+        }
+
+        function addRegion() {
+            let input = document.getElementById('regionName');
+            let name = input.value.trim().toUpperCase();
+            if (!name) return;
+            if (nodes.find(n => n.id === name)) {
+                alert('Region already exists!');
+                return;
+            }
+            if (name.length > 3) {
+                name = name.substring(0, 3);
+            }
+            
+            nodes.push({ id: name, x: 0, y: 0, color: null, flash: 0 });
+            centerGraph(); // Dynamically re-center proportional to new node count
+            input.value = '';
+            updateSelects();
+            resetGraph();
+        }
+
+        function updateSelects() {
+            let sFrom = document.getElementById('adjFrom');
+            let sTo = document.getElementById('adjTo');
+            sFrom.innerHTML = '';
+            sTo.innerHTML = '';
+            nodes.forEach(n => {
+                let opt1 = document.createElement('option');
+                opt1.value = n.id; opt1.text = n.id;
+                let opt2 = document.createElement('option');
+                opt2.value = n.id; opt2.text = n.id;
+                sFrom.add(opt1);
+                sTo.add(opt2);
+            });
+        }
+
+        function addAdjacency() {
+            let from = document.getElementById('adjFrom').value;
+            let to = document.getElementById('adjTo').value;
+            if(!from || !to) return;
+            if (from === to) {
+                alert('Cannot connect a region to itself');
+                return;
+            }
+            let exists = edges.find(e => (e.from === from && e.to === to) || (e.from === to && e.to === from));
+            if (exists) {
+                alert('Adjacency already exists');
+                return;
+            }
+            edges.push({ from: from, to: to });
+            resetGraph();
+        }
+
+        function resetGraph() {
+            abortAnimation = true;
+            nodes.forEach(n => { n.color = null; n.flash = 0; });
+            ripples = [];
+            winningSync = 0;
+            
+            document.getElementById('output-content').innerHTML = 'Awaiting connection...';
+            document.getElementById('stat-explored').innerText = '0';
+            document.getElementById('stat-backtracks').innerText = '0';
+            document.getElementById('stat-time').innerText = '0.00ms';
+            document.getElementById('stat-colors').innerText = '0';
+            
+            let overlay = document.getElementById('statusOverlay');
+            overlay.className = 'status-overlay';
+            overlay.innerHTML = '';
+        }
+
+        function clearAll() {
+            resetGraph();
+            nodes = [];
+            edges = [];
+            updateSelects();
+        }
+
+        function animateValue(id, start, end, duration, isFloat = false, suffix = "") {
+            let obj = document.getElementById(id);
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                let current = progress * (end - start) + start;
+                if (!isFloat) current = Math.floor(current);
+                else current = current.toFixed(2);
+                
+                obj.innerHTML = current + suffix;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    obj.innerHTML = (isFloat ? end.toFixed(2) : end) + suffix;
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        async function startSolving() {
+            let solveBtn = document.getElementById('solveBtn');
+            solveBtn.classList.add('charging');
+            solveBtn.disabled = true;
+            
+            await sleep(600); // Simulate charging phase
+            solveBtn.classList.remove('charging');
+            
+            if (isAnimating) {
+                abortAnimation = true;
+                await sleep(100);
+            }
+            resetGraph();
+            abortAnimation = false;
+            
+            let variables = nodes.map(n => n.id);
+            if(variables.length === 0) {
+                solveBtn.disabled = false;
+                return;
+            }
+            
+            let domains = {};
+            let numColors = parseInt(document.getElementById('numColors').value);
+            let colors = numColors === 3 ? ['Red', 'Green', 'Blue'] : ['Red', 'Green', 'Blue', 'Yellow'];
+            variables.forEach(v => domains[v] = [...colors]);
+            
+            let assignment = {};
+            steps = [];
+            stats.explored = 0;
+            stats.backtracks = 0;
+            stats.startTime = performance.now();
+            
+            let success = backtrack(assignment, variables, domains, colors);
+            
+            stats.endTime = performance.now();
+            
+            playAnimation(success, assignment);
+        }
+
+        function getNeighbors(nodeId) {
+            let neighbors = [];
+            edges.forEach(e => {
+                if (e.from === nodeId) neighbors.push(e.to);
+                if (e.to === nodeId) neighbors.push(e.from);
+            });
+            return neighbors;
+        }
+
+        function isValid(node, color, assignment) {
+            let neighbors = getNeighbors(node);
+            for (let n of neighbors) {
+                if (assignment[n] === color) return false;
+            }
+            return true;
+        }
+
+        function backtrack(assignment, variables, domains, colors) {
+            if (Object.keys(assignment).length === variables.length) return true;
+            
+            // MRV Heuristic
+            let unassigned = variables.filter(v => !assignment[v]);
+            unassigned.sort((a, b) => {
+                let diff = domains[a].length - domains[b].length;
+                if(diff !== 0) return diff;
+                let degA = getNeighbors(a).filter(n => !assignment[n]).length;
+                let degB = getNeighbors(b).filter(n => !assignment[n]).length;
+                return degB - degA;
+            });
+            
+            let curr = unassigned[0];
+            stats.explored++;
+            
+            for (let color of domains[curr]) {
+                if (isValid(curr, color, assignment)) {
+                    assignment[curr] = color;
+                    steps.push({ type: 'try', node: curr, color: color });
+                    
+                    let localDomains = JSON.parse(JSON.stringify(domains));
+                    let neighbors = getNeighbors(curr);
+                    let fcFailed = false;
+                    
+                    for (let n of neighbors) {
+                        if (!assignment[n]) {
+                            localDomains[n] = localDomains[n].filter(c => c !== color);
+                            if (localDomains[n].length === 0) {
+                                fcFailed = true;
+                            }
+                        }
+                    }
+                    
+                    if (!fcFailed) {
+                        if (backtrack(assignment, variables, localDomains, colors)) {
+                            return true;
+                        }
+                    }
+                    
+                    delete assignment[curr];
+                    steps.push({ type: 'backtrack', node: curr });
+                    stats.backtracks++;
+                }
+            }
+            return false;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function playAnimation(success, finalAssignment) {
+            isAnimating = true;
+            
+            const speedSlider = document.getElementById('animSpeed');
+            
+            for (let i = 0; i < steps.length; i++) {
+                if (abortAnimation) break;
+                let step = steps[i];
+                let node = nodes.find(n => n.id === step.node);
+                
+                if (step.type === 'try') {
+                    node.color = step.color;
+                    node.flash = 1;
+                    addRipple(node.x, node.y, colorPalette[step.color]);
+                } else if (step.type === 'backtrack') {
+                    node.color = null;
+                    node.flash = 1;
+                }
+                
+                setTimeout(() => { 
+                    if(node && !abortAnimation) { 
+                        node.flash = 0; 
+                    } 
+                }, 150);
+                
+                let currentDelay = parseInt(speedSlider.max) - parseInt(speedSlider.value) + parseInt(speedSlider.min);
+                await sleep(currentDelay);
+            }
+            
+            if (!abortAnimation) {
+                if (success) {
+                    let overlay = document.getElementById('statusOverlay');
+                    overlay.className = 'status-overlay active success-text';
+                    overlay.innerHTML = 'System Solved';
+                    winningSync = 0.1; // trigger winning pulse
+                    
+                    animateValue('stat-explored', 0, stats.explored, 1000);
+                    animateValue('stat-backtracks', 0, stats.backtracks, 1000);
+                    animateValue('stat-time', 0, stats.endTime - stats.startTime, 1000, true, 'ms');
+                    
+                    let colorsUsed = new Set(Object.values(finalAssignment)).size;
+                    animateValue('stat-colors', 0, colorsUsed, 1000);
+
+                    nodes.forEach(n => { n.color = finalAssignment[n.id]; n.flash = 0; });
+                    
+                    let outText = Object.entries(finalAssignment)
+                        .map(([id, col]) => `<div class="result-badge"><span class="color-dot" style="background:${colorPalette[col]}; box-shadow: 0 0 8px ${colorPalette[col]}"></span>${id} &rarr; ${col}</div>`)
+                        .join('');
+                    document.getElementById('output-content').innerHTML = `<div class="results-container">${outText}</div>`;
+                } else {
+                    let overlay = document.getElementById('statusOverlay');
+                    overlay.className = 'status-overlay active error-text';
+                    overlay.innerHTML = 'Unsolvable';
+                    
+                    animateValue('stat-explored', 0, stats.explored, 1000);
+                    animateValue('stat-backtracks', 0, stats.backtracks, 1000);
+                    animateValue('stat-time', 0, stats.endTime - stats.startTime, 1000, true, 'ms');
+                    animateValue('stat-colors', 0, 0, 1000);
+                    
+                    document.getElementById('output-content').innerHTML = '<span style="color:#ff3366">Unsolvable with selected constraints.</span>';
+                }
+                
+                setTimeout(() => { 
+                    let overlay = document.getElementById('statusOverlay');
+                    if(overlay) overlay.classList.remove('active'); 
+                }, 3000);
+            }
+            
+            isAnimating = false;
+            abortAnimation = false;
+            document.getElementById('solveBtn').disabled = false;
+        }
+
+        window.onload = init;
+    </script>
+    
+    <!-- README START
+# Map Coloring Problem Solver
+
+## Problem Description
+The Map Coloring Problem is a classic Constraint Satisfaction Problem (CSP). The objective is to assign a color to each region of a map such that no two adjacent regions share the same color. It has many practical applications, including scheduling, register allocation, and frequency assignment.
+
+## Algorithm Used
+This application uses **Backtracking Search** combined with **Forward Checking**.
+- **Backtracking**: The algorithm explores assignments node by node. If it reaches a state where no valid color can be assigned to the current node without breaking the adjacency rules, it "backtracks" to the previous node and tries a different color.
+- **Forward Checking**: To optimize the search, every time a color is assigned to a node, the algorithm updates the "domains" (available valid colors) of all its unassigned neighbors by removing the chosen color. If any neighbor's domain becomes completely empty (domain wipeout), the algorithm immediately knows this branch is invalid and backtracks early, significantly saving computation time.
+- **MRV Heuristic**: It uses the Minimum Remaining Values heuristic to pick the next unassigned variable with the fewest valid colors left, failing faster if a dead-end is inevitable.
+
+## How to Run
+Simply open this `index.html` file in any modern web browser. No local server, build steps, or external dependencies (other than Google Fonts) are required.
+
+## Sample Input
+- **Regions**: A, B, C, D
+- **Adjacencies**: A-B, A-C, B-C, B-D, C-D
+- **Colors**: 3 (Red, Green, Blue)
+
+## Sample Output
+- A -> Red
+- B -> Green
+- C -> Blue
+- D -> Red
+
+(Note: Actual colors assigned might vary depending on the MRV evaluation order, but no two adjacent nodes will ever share a color.)
+    README END -->
+</body>
+</html>
