@@ -27,6 +27,9 @@ An interactive visualizer that colors a generic map ensuring no two adjacent reg
 **Features:** interactive graph builder, animated solving, stats panel  
 **Sample:** A→Red, B→Green, C→Blue, D→Red  
 
+![Problem 5 Map Coloring](./Problem5_MapColoring/preview.png)
+
+
 ---
 
 ## 🟡 Problem 11 — GPS Route Finder (A*)
@@ -37,6 +40,9 @@ A map-based routing simulation that calculates the shortest path between a start
 **Features:** click-to-build graph, animated pathfinding, comparison table  
 **Sample:** A→B→D→F, Cost=6, A* explored 3 nodes vs Dijkstra 6 nodes  
 
+![Problem 11 GPS Route Finder](./Problem11_GPSRouteFinder/preview.png)
+
+
 ---
 
 ## 🔴 Problem 1 — Tic-Tac-Toe AI (Minimax)
@@ -46,6 +52,9 @@ An unbeatable Tic-Tac-Toe agent that plays flawlessly against human opponents. I
 **Algorithm:** Minimax + Alpha-Beta Pruning, Human vs AI and Human vs Human  
 **Features:** two game modes, algorithm toggle, comparison panel, move log  
 **Performance:** AI never loses on hard mode  
+
+![Problem 1 Tic-Tac-Toe AI](./Problem1_TicTacToe/preview.png)
+
 
 ---
 
