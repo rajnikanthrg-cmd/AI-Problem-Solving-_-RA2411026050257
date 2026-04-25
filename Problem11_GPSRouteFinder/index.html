@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Route Finder - A* Algorithm</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #060612;
+            --panel-bg: #0e0e20;
+            --panel-border: rgba(99, 102, 241, 0.5);
+            --canvas-bg: #08081a;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --indigo: #4f46e5;
+            --yellow: #fbbf24;
+            --gray: #374151;
+            --neon-green: #00ff88;
+            --red: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 380px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .sidebar h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--indigo);
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        select, button {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-color);
+            color: white;
+            border: 1px solid var(--panel-border);
+            padding: 8px 12px;
+            border-radius: 6px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        select {
+            width: 120px;
+            cursor: pointer;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        #findRouteBtn {
+            grid-column: span 2;
+            background: var(--indigo);
+            border-color: var(--indigo);
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            padding: 10px;
+            font-size: 1rem;
+        }
+
+        #findRouteBtn:hover {
+            background: #4338ca;
+            box-shadow: 0 0 15px var(--indigo);
+        }
+
+        #clearBtn, #resetBtn {
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        #clearBtn:hover, #resetBtn:hover {
+            background: var(--gray);
+            border-color: var(--text-muted);
+        }
+
+        .comparison-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .comparison-panel h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 6px 4px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        #comparisonText {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--neon-green);
+            min-height: 20px;
+            line-height: 1.4;
+        }
+
+        .step-log {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .step-log h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        #logContainer {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: var(--bg-color);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .log-item {
+            padding: 6px 8px;
+            border-left: 3px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 0 4px 4px 0;
+            line-height: 1.4;
+        }
+
+        .log-item.explore {
+            border-left-color: var(--yellow);
+        }
+
+        .log-item.visit {
+            border-left-color: var(--gray);
+            color: var(--text-muted);
+        }
+
+        .log-item.path {
+            border-left-color: var(--neon-green);
+            color: var(--neon-green);
+            font-weight: bold;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .main-content {
+            flex-grow: 1;
+            position: relative;
+            background-color: var(--canvas-bg);
+            border-radius: 12px;
+            border: 1px solid var(--panel-border);
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+            min-width: 600px;
+            min-height: 500px;
+        }
+
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .instructions {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(14, 14, 32, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--panel-border);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--panel-border);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="sidebar">
+        <h1>GPS Route Finder</h1>
+        <div class="controls">
+            <div class="control-group">
+                <label for="startNode">Start City:</label>
+                <select id="startNode"></select>
+            </div>
+            <div class="control-group">
+                <label for="goalNode">Goal City:</label>
+                <select id="goalNode"></select>
+            </div>
+            <div class="buttons">
+                <button id="findRouteBtn">Find Route (A*)</button>
+                <button id="clearBtn">Clear Graph</button>
+                <button id="resetBtn">Reset Path</button>
+            </div>
+        </div>
+
+        <div class="comparison-panel">
+            <h3>Comparison</h3>
+            <table id="comparisonTable">
+                <thead>
+                    <tr>
+                        <th>Algorithm</th>
+                        <th>Nodes Explored</th>
+                        <th>Time (ms)</th>
+                        <th>Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="astarRow">
+                        <td>A*</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                    <tr id="dijkstraRow">
+                        <td>Dijkstra</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p id="comparisonText"></p>
+        </div>
+
+        <div class="step-log">
+            <h3>Step-by-Step Log</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="instructions">
+            Click empty space to add a city node.<br>
+            Click two nodes to create an edge.
+        </div>
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="graphCanvas"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    // Default Graph State
+    let nodes = [
+        { id: 'A', x: 150, y: 300 },
+        { id: 'B', x: 300, y: 150 },
+        { id: 'C', x: 300, y: 450 },
+        { id: 'D', x: 450, y: 300 },
+        { id: 'E', x: 450, y: 100 },
+        { id: 'F', x: 650, y: 300 }
+    ];
+
+    let edges = [
+        { u: 'A', v: 'B', weight: 1 },
+        { u: 'A', v: 'C', weight: 4 },
+        { u: 'B', v: 'D', weight: 2 },
+        { u: 'B', v: 'E', weight: 5 },
+        { u: 'C', v: 'D', weight: 1 },
+        { u: 'D', v: 'F', weight: 3 },
+        { u: 'E', v: 'F', weight: 1 }
+    ];
+
+    const NODE_RADIUS = 18;
+
+    // Animation State
+    let openNodes = new Set();
+    let closedNodes = new Set();
+    let pathEdges = [];
+    let currentNodeId = null;
+    let isAnimating = false;
+    let dashOffset = 0;
+    let edgeStartNode = null;
+
+    function resize() {
+        canvas.width = canvasContainer.clientWidth;
+        canvas.height = canvasContainer.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function updateDropdowns() {
+        const startSel = document.getElementById('startNode');
+        const goalSel = document.getElementById('goalNode');
+        const startVal = startSel.value;
+        const goalVal = goalSel.value;
+
+        startSel.innerHTML = '';
+        goalSel.innerHTML = '';
+
+        nodes.forEach(n => {
+            startSel.add(new Option(n.id, n.id));
+            goalSel.add(new Option(n.id, n.id));
+        });
+
+        if (startVal && nodes.find(n => n.id === startVal)) startSel.value = startVal;
+        else if (nodes.length > 0) startSel.value = nodes[0].id;
+
+        if (goalVal && nodes.find(n => n.id === goalVal)) goalSel.value = goalVal;
+        else if (nodes.length > 0) goalSel.value = nodes[nodes.length - 1].id;
+    }
+
+    function getNextNodeId() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        for (let i = 0; i < chars.length; i++) {
+            if (!nodes.find(n => n.id === chars[i])) return chars[i];
+        }
+        return `N${nodes.length}`;
+    }
+
+    function drawGrid() {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        for (let x = 0; x < canvas.width; x += 30) {
+            for (let y = 0; y < canvas.height; y += 30) {
+                ctx.beginPath();
+                ctx.arc(x, y, 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+
+        // Draw edges
+        edges.forEach(edge => {
+            const n1 = nodes.find(n => n.id === edge.u);
+            const n2 = nodes.find(n => n.id === edge.v);
+            if (!n1 || !n2) return;
+
+            const isPath = pathEdges.some(pe => (pe.u === edge.u && pe.v === edge.v) || (pe.u === edge.v && pe.v === edge.u));
+
+            ctx.beginPath();
+            ctx.moveTo(n1.x, n1.y);
+            ctx.lineTo(n2.x, n2.y);
+
+            if (isPath) {
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 10]);
+                ctx.lineDashOffset = -dashOffset;
+                ctx.shadowColor = '#00ff88';
+                ctx.shadowBlur = 10;
+            } else {
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([]);
+                ctx.shadowBlur = 0;
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.setLineDash([]);
+
+            // Draw weight
+            const midX = (n1.x + n2.x) / 2;
+            const midY = (n1.y + n2.y) / 2;
+            ctx.fillStyle = '#0e0e20';
+            ctx.beginPath();
+            ctx.arc(midX, midY, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(99,102,241,0.5)';
+            ctx.stroke();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '11px JetBrains Mono';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(edge.weight, midX, midY);
+        });
+
+        // Draw nodes
+        nodes.forEach(node => {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, NODE_RADIUS, 0, Math.PI * 2);
+
+            ctx.fillStyle = '#111827';
+
+            if (pathEdges.some(pe => pe.u === node.id || pe.v === node.id)) {
+                ctx.strokeStyle = '#00ff88';
+                ctx.shadowColor = '#00ff88';
+                ctx.shadowBlur = 15;
+            } else if (node.id === currentNodeId) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 15;
+            } else if (openNodes.has(node.id)) {
+                ctx.strokeStyle = '#fbbf24';
+                ctx.shadowColor = '#fbbf24';
+                ctx.shadowBlur = 10;
+            } else if (closedNodes.has(node.id)) {
+                ctx.strokeStyle = '#374151';
+                ctx.shadowColor = '#374151';
+                ctx.shadowBlur = 0;
+            } else {
+                ctx.strokeStyle = '#4f46e5';
+                ctx.shadowColor = '#4f46e5';
+                ctx.shadowBlur = 10;
+            }
+
+            if (edgeStartNode === node) {
+                ctx.strokeStyle = '#ef4444';
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 15;
+            }
+
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px Space Grotesk';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(node.id, node.x, node.y);
+        });
+
+        dashOffset += 0.5;
+        requestAnimationFrame(draw);
+    }
+
+    // Canvas Interaction
+    canvas.addEventListener('mousedown', (e) => {
+        if (isAnimating) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const clickedNode = nodes.find(n => Math.hypot(n.x - mx, n.y - my) <= NODE_RADIUS + 5);
+
+        if (clickedNode) {
+            if (!edgeStartNode) {
+                edgeStartNode = clickedNode;
+            } else {
+                if (edgeStartNode !== clickedNode) {
+                    const exists = edges.find(ed => (ed.u === edgeStartNode.id && ed.v === clickedNode.id) || (ed.v === edgeStartNode.id && ed.u === clickedNode.id));
+                    if (!exists) {
+                        const w = prompt(`Enter distance/weight for edge ${edgeStartNode.id} - ${clickedNode.id}:`, "1");
+                        if (w !== null) {
+                            const weight = parseInt(w);
+                            if (!isNaN(weight) && weight > 0) {
+                                edges.push({ u: edgeStartNode.id, v: clickedNode.id, weight });
+                            }
+                        }
+                    }
+                }
+                edgeStartNode = null;
+            }
+        } else {
+            if (edgeStartNode) {
+                edgeStartNode = null;
+            } else {
+                const id = getNextNodeId();
+                nodes.push({ id, x: mx, y: my });
+                updateDropdowns();
+            }
+        }
+    });
+
+    // Heuristic: Euclidean distance scaled
+    function heuristic(id1, id2) {
+        const n1 = nodes.find(n => n.id === id1);
+        const n2 = nodes.find(n => n.id === id2);
+        const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+        return Math.round((dist / 100) * 10) / 10;
+    }
+
+    function getNeighbors(nodeId) {
+        const neighbors = [];
+        edges.forEach(e => {
+            if (e.u === nodeId) neighbors.push({ id: e.v, weight: e.weight });
+            if (e.v === nodeId) neighbors.push({ id: e.u, weight: e.weight });
+        });
+        return neighbors;
+    }
+
+    function runSearch(startId, goalId, useHeuristic) {
+        const openSet = new Set([startId]);
+        const closedSet = new Set();
+        const gScore = {};
+        const fScore = {};
+        const cameFrom = {};
+
+        nodes.forEach(n => {
+            gScore[n.id] = Infinity;
+            fScore[n.id] = Infinity;
+        });
+
+        gScore[startId] = 0;
+        fScore[startId] = useHeuristic ? heuristic(startId, goalId) : 0;
+
+        const steps = [];
+        let nodesExplored = 0;
+
+        const t0 = performance.now();
+
+        while (openSet.size > 0) {
+            let current = null;
+            let minF = Infinity;
+            for (let id of openSet) {
+                if (fScore[id] < minF) {
+                    minF = fScore[id];
+                    current = id;
+                }
+            }
+
+            steps.push({
+                type: 'current',
+                id: current,
+                f: fScore[current],
+                g: gScore[current],
+                h: fScore[current] - gScore[current],
+                openSet: Array.from(openSet),
+                closedSet: Array.from(closedSet)
+            });
+
+            if (current === goalId) {
+                const path = [];
+                let curr = current;
+                while (cameFrom[curr]) {
+                    path.push({ u: cameFrom[curr], v: curr });
+                    curr = cameFrom[curr];
+                }
+                const t1 = performance.now();
+                return { path, cost: gScore[goalId], nodesExplored, time: t1 - t0, steps };
+            }
+
+            openSet.delete(current);
+            closedSet.add(current);
+            nodesExplored++;
+
+            const neighbors = getNeighbors(current);
+            for (let neighbor of neighbors) {
+                if (closedSet.has(neighbor.id)) continue;
+
+                const tentative_g = gScore[current] + neighbor.weight;
+
+                if (!openSet.has(neighbor.id)) {
+                    openSet.add(neighbor.id);
+                } else if (tentative_g >= gScore[neighbor.id]) {
+                    continue;
+                }
+
+                cameFrom[neighbor.id] = current;
+                gScore[neighbor.id] = tentative_g;
+                fScore[neighbor.id] = tentative_g + (useHeuristic ? heuristic(neighbor.id, goalId) : 0);
+
+                steps.push({
+                    type: 'neighbor',
+                    id: neighbor.id,
+                    f: fScore[neighbor.id],
+                    g: gScore[neighbor.id],
+                    h: fScore[neighbor.id] - gScore[neighbor.id]
+                });
+            }
+        }
+        const t1 = performance.now();
+        return { path: null, cost: Infinity, nodesExplored, time: t1 - t0, steps };
+    }
+
+    function formatNum(num) {
+        if (num === Infinity) return "∞";
+        return Number.isInteger(num) ? num : num.toFixed(1);
+    }
+
+    function logMsg(msg, className) {
+        const div = document.createElement('div');
+        div.className = `log-item ${className}`;
+        div.textContent = msg;
+        const container = document.getElementById('logContainer');
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function animateSearch(astarResult) {
+        isAnimating = true;
+        openNodes.clear();
+        closedNodes.clear();
+        pathEdges = [];
+        currentNodeId = null;
+        document.getElementById('logContainer').innerHTML = '';
+
+        let stepIndex = 0;
+        const steps = astarResult.steps;
+
+        function nextStep() {
+            if (stepIndex >= steps.length) {
+                if (astarResult.path) {
+                    pathEdges = astarResult.path;
+                    logMsg(`✨ Path found! Total Cost: ${astarResult.cost}`, 'path');
+                } else {
+                    logMsg(`❌ No path found.`, 'path');
+                }
+                currentNodeId = null;
+                isAnimating = false;
+                return;
+            }
+
+            const step = steps[stepIndex];
+            if (step.type === 'current') {
+                currentNodeId = step.id;
+                step.openSet.forEach(id => openNodes.add(id));
+                step.closedSet.forEach(id => closedNodes.add(id));
+                openNodes.delete(step.id);
+                logMsg(`Step ${stepIndex + 1}: Exploring ${step.id} (f=${formatNum(step.f)}, g=${formatNum(step.g)}, h=${formatNum(step.h)})`, 'explore');
+            } else if (step.type === 'neighbor') {
+                openNodes.add(step.id);
+                logMsg(`  → Frontier added ${step.id} (f=${formatNum(step.f)}, g=${formatNum(step.g)}, h=${formatNum(step.h)})`, 'visit');
+            }
+
+            stepIndex++;
+            setTimeout(nextStep, 400); // Animation speed
+        }
+
+        nextStep();
+    }
+
+    function resetState() {
+        openNodes.clear();
+        closedNodes.clear();
+        pathEdges = [];
+        currentNodeId = null;
+        edgeStartNode = null;
+        isAnimating = false;
+        document.getElementById('logContainer').innerHTML = '';
+        document.getElementById('astarRow').innerHTML = `<td>A*</td><td>-</td><td>-</td><td>-</td>`;
+        document.getElementById('dijkstraRow').innerHTML = `<td>Dijkstra</td><td>-</td><td>-</td><td>-</td>`;
+        document.getElementById('comparisonText').textContent = '';
+    }
+
+    function clearGraph() {
+        if (isAnimating) return;
+        nodes = [];
+        edges = [];
+        resetState();
+        updateDropdowns();
+    }
+
+    document.getElementById('clearBtn').addEventListener('click', clearGraph);
+    document.getElementById('resetBtn').addEventListener('click', resetState);
+
+    document.getElementById('findRouteBtn').addEventListener('click', () => {
+        if (isAnimating) return;
+        resetState();
+        const startId = document.getElementById('startNode').value;
+        const goalId = document.getElementById('goalNode').value;
+        if (!startId || !goalId) return;
+
+        const dijkstraResult = runSearch(startId, goalId, false);
+        const astarResult = runSearch(startId, goalId, true);
+
+        document.getElementById('astarRow').innerHTML = `<td>A*</td><td>${astarResult.nodesExplored}</td><td>${astarResult.time.toFixed(2)}</td><td>${astarResult.cost === Infinity ? '∞' : astarResult.cost}</td>`;
+        document.getElementById('dijkstraRow').innerHTML = `<td>Dijkstra</td><td>${dijkstraResult.nodesExplored}</td><td>${dijkstraResult.time.toFixed(2)}</td><td>${dijkstraResult.cost === Infinity ? '∞' : dijkstraResult.cost}</td>`;
+
+        const diff = dijkstraResult.nodesExplored - astarResult.nodesExplored;
+        if (diff > 0) {
+            document.getElementById('comparisonText').textContent = `A* explored ${diff} fewer nodes thanks to the heuristic.`;
+        } else if (diff === 0) {
+            document.getElementById('comparisonText').textContent = `A* and Dijkstra explored the same number of nodes.`;
+        } else {
+            document.getElementById('comparisonText').textContent = `Dijkstra explored fewer nodes (unusual for A* with admissible heuristic).`;
+        }
+
+        animateSearch(astarResult);
+    });
+
+    // Initialize
+    updateDropdowns();
+    document.getElementById('startNode').value = 'A';
+    document.getElementById('goalNode').value = 'F';
+    draw();
+
+</script>
+
+<!--
+=========================================================
+# README.md
+
+# 🗺️ GPS-Based City Route Finder
+
+An interactive web-based visualizer for the **A* Search Algorithm**, designed to find the optimal path between city nodes on a 2D canvas.
+
+## 🚀 Features
+- 📍 **Interactive Canvas**: Click to place city nodes intuitively.
+- 🔗 **Dynamic Edges**: Connect nodes and assign custom path weights.
+- 🧠 **A* vs Dijkstra**: Real-time performance comparison showing how the heuristic optimizes search.
+- 🎨 **Beautiful UI**: Dark-themed, glowing elements, and smooth path animations.
+- 📜 **Step-by-Step Log**: Transparent algorithm execution history showing f, g, and h values.
+
+## 📖 Problem Description
+The goal is to navigate from a `Start` city to a `Goal` city finding the route with the minimum cost. Traditional algorithms like Dijkstra explore uniformly in all directions. A* introduces a **Heuristic** to guide the search directionally towards the goal, reducing the number of explored nodes.
+
+## 🧠 A* Algorithm & Heuristic
+A* evaluates nodes by combining:
+- `g(n)`: The exact cost from the start node to node `n`.
+- `h(n)`: The estimated cost from node `n` to the goal.
+- `f(n) = g(n) + h(n)`: The estimated total cost of the path through node `n`.
+
+**Pseudocode:**
+```
+1. Initialize openSet with startNode
+2. While openSet is not empty:
+3.    current = node in openSet with lowest f(n)
+4.    if current is goal: return path
+5.    remove current from openSet, add to closedSet
+6.    for each neighbor of current:
+7.        if neighbor in closedSet: continue
+8.        tentative_g = g(current) + edge_weight(current, neighbor)
+9.        if tentative_g < g(neighbor):
+10.           update g(neighbor) and f(neighbor)
+11.           add neighbor to openSet
+```
+
+**Heuristic Calculation:**
+The visualizer uses the **Euclidean Distance** scaled down to ensure admissibility (never overestimating the true cost).
+`h = Math.round((Math.hypot(x1 - x2, y1 - y2) / 100) * 10) / 10`
+
+## 📊 A* vs Dijkstra Comparison
+- **Dijkstra**: A* without a heuristic (h=0). Explores in all directions blindly. Best when you don't know the coordinates of the goal.
+- **A***: Uses a heuristic to prioritize paths that head towards the goal. Explores significantly fewer nodes, completing faster on spatial graphs.
+
+## 🛠️ Sample Input / Output
+- **Preloaded Setup**: 
+  - Nodes: A, B, C, D, E, F
+  - Edges: A→B(1), A→C(4), B→D(2), B→E(5), C→D(1), D→F(3), E→F(1)
+- **Start**: A, **Goal**: F
+- **Expected Output**: Path A → B → D → F with Total Cost: 6.
+- **Performance**: A* typically explores ~4 nodes compared to Dijkstra's ~6 nodes.
+
+## 🏃 How to Run
+1. Download `index.html`.
+2. Double-click the file to open it in any modern web browser (Chrome, Firefox, Edge, Safari).
+3. No servers or dependencies required!
+
+## 👨‍💻 Author
+**Yashasvi Beesam**
+B.Tech AI & ML, SRM University (2024-2028)
+
+## 📄 License
+MIT License
+=========================================================
+-->
+</body>
+</html>
